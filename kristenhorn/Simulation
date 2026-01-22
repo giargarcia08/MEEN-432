@@ -1,1 +1,12 @@
-hey
+%% Initial Conditions
+%{
+wo= 10; % rad/s, initial angular velocity
+J= 100; % kg-m^2, rotational inertia
+b= 10 % N-m-s/rad, Damping Coefficient
+A= 0; % N-m, applied constant torque
+t= 0.1; % s, time step
+%}
+
+%% Simulation
+% dw=(1/J)*(A-AL-bw)
+% w_t= (A/b)*(1-e^(-b*t/J))+wo*e^(-b*t/J)
