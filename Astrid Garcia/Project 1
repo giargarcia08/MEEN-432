@@ -1,12 +1,13 @@
+%% 
 clear
 clc
 J = 100;        % kg*m^2 (rotational inertia)
 b = 10;         % N*m*s/rad (damping)
 w0 = 10;        % rad/s (starting angular speed)
+A= 0;           % N-m (applied constant torque)
 theta0 = 0;     % rad (starting position)
 
-
 %% time 
-total_time=25           % sec (total time of simulation)
-dt = 0.01;              % time step in seconds
-t=0:dt:total_time       % (array from 0-25 with time step of 0.01
+total_time=25;           % sec (total time of simulation)
+dt = 0.1;               % sec (time step) 
+t=0:dt:total_time       % (array from 0-25 with time step of 0.01)
