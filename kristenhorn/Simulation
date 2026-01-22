@@ -10,3 +10,14 @@ t= 0.1; % s, time step
 %% Simulation
 % dw=(1/J)*(A-AL-bw)
 % w_t= (A/b)*(1-e^(-b*t/J))+wo*e^(-b*t/J)
+
+%% Simulation
+w= @(t) (A/b)*(1-exp(-b*t/J))+wo*exp(-b*t/J);
+int=integral(w,0,1)
+
+% J*dw = A-AL-b*w
+
+%func=@(t) (1/J)*(A-AL-b*w);
+
+%q = integral(fun,xmin,xmax)
+%int=integral(func, 0 ,1);
