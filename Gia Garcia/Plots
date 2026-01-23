@@ -1,3 +1,20 @@
+# Ideally parameters put in table T
+# T = cell2table(out, "VariableNames", ...
+  ["inputType","w0","J","b","A","freq","solver","dt","cpuTime","maxErr"]);
+save("part1_results.mat","T");
+
+#Load or recall this table
+#load("part1_results.mat","T");
+part1_plots_student
+
+
+
+
+
+
+
+
+
 %% part1_plots_student.m
 % Plots for Part 1
 % Assumes you already have a table called T in the workspace.
