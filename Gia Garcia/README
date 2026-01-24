@@ -1,0 +1,37 @@
+# P1S1 – Part 1 
+
+## What is this?
+--------------------
+This is the script for **Project 1 – Part 1. 
+
+What it does?
+--------------------
+- runs the Simulink model a bunch of times with different solvers + time steps
+- compares the Simulink result to the theoretical solution
+- saves everything and formats it to a table called `T`
+- makes a the plots 
+
+## What you need in the folder
+--------------------
+- `P1S1.m`  (script)
+- `P1S1sim.slx` (Simulink)
+
+When you run it, creates:
+- `P1_results.mat` (saves the table `T`)
+
+---
+
+## IMPORTANT: Simulink model needs to output
+The code assumes the simulation output has this:
+
+- `out.w.time`  : time vector  
+- `out.w.data`  : angular speed values
+
+So the Simulink model needs to be logging the signal called `w`
+
+If not loggin, the script will error/crash when it tries to do `out.w.time`.
+
+Quick way to check after one run:
+```matlab
+out = sim("P1S1sim");
+fieldnames(out)
