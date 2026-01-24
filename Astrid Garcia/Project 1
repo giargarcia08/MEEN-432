@@ -1,13 +1,138 @@
-%% 
-clear
-clc
-J = 100;        % kg*m^2 (rotational inertia)
-b = 10;         % N*m*s/rad (damping)
-w0 = 10;        % rad/s (starting angular speed)
-A= 0;           % N-m (applied constant torque)
-theta0 = 0;     % rad (starting position)
+clear; clc;
 
-%% time 
-total_time=25;           % sec (total time of simulation)
-dt = 0.1;               % sec (time step) 
-t=0:dt:total_time       % (array from 0-25 with time step of 0.01)
+%  System parameters
+
+j = [100, 0.01];
+b = [10, 0.1];
+
+w0 = 10;                 % rad/s
+w = [0.1,100];
+A= [0, 100];       % constant torque only (Part 1 error calc)
+
+tEnd = 25;
+%%  Solver settings
+
+fixedSolvers = ["ode1", "ode4"];
+variableSolvers = ["ode45", "ode23tb"];
+dt_vals = [0.001, 0.1, 1];
+
+%% 
+
+%  Create table
+T = table();
+
+for j = j
+    for b = b
+        for A = A
+
+            
+            for solver = fixedSolvers
+                for dt = dt_vals
+
+                    % Set solver
+                    set_param("P1S1sim", ...
+                        "Solver", solver, ...
+                        "FixedStep", num2str(dt), ...
+                        "StopTime", num2str(tEnd));
+
+                    % Run simulation + time it
+                    tic;
+                    out = sim("P1S1sim");
+                    cpuTime = toc;
+
+                    % Extract results
+                    t = out.w.time;
+                    w_sim = out.w.data;
+
+                    % Analytical solution
+                    w_exact = (w0 - A/b).*exp(-(b/j).*t) + A/b;
+
+                    % Max error
+                    maxErr = max(abs(w_sim - w_exact));
+
+                    % Append row to table
+                    newRow = table(solver, dt, j, b, A, 0, cpuTime, maxErr,'VariableNames',{'solver','dt','j','b','A','freq','cpuTime','maxErr'} );
+
+                    T = [T; newRow];
+                end
+            end
+
+                      for solver = variableSolvers
+
+                set_param("P1S1sim","Solver", solver, "StopTime", num2str(tEnd));
+
+                tic;
+                out = sim("P1S1sim");
+                cpuTime = toc;
+
+                t = out.w.time;
+                w_sim = out.w.data;
+
+                w_exact = (w0 - A/b).*exp(-(b/j).*t) + A/b;
+                maxErr = max(abs(w_sim - w_exact));
+
+                newRow = table(solver, NaN, j, b, A, 0, cpuTime, maxErr, 'VariableNames',{'solver','dt','j','b','A','freq','cpuTime','maxErr'} );
+
+                T = [T; newRow];
+            end
+        end
+    end
+end
+
+%% Save results
+
+save("P1_results.mat","T");
+
+
+
+%% Create plots
+
+% CPU time Vs Max Error
+figure
+plot(T.cpuTime,T.maxErr);
+grid on
+xlabel('CPU time')
+ylabel('Max error')
+title('CPU Time vs Max Error')
+
+hold on 
+
+
+%Max error Vs Time Step
+figure
+plot(T.maxErr, T.dt);
+grid on
+xlabel('Max Error')
+ylabel('Time Step')
+title('CMax Error Vs CPU time')
+
+hold on 
+
+
+%CPU time vs Time Step
+figure
+plot(T.cpuTime, T.dt);
+grid on
+xlabel('CPU time')
+ylabel('Time Step')
+title('CPU TIme Vs Time Step')
+
+
+hold on 
+
+
+%Max Error Vs CPU time 
+figure
+plot(T.maxErr, T.dt);
+grid on
+xlabel('Max Error')
+ylabel('Time Step')
+title('Max Error Vs CPU time')
+
+
+
+
+
+
+
+
