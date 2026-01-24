@@ -24,56 +24,55 @@ T = table();
 for j = j
     for b = b
         for A = A
+            for freq = w
 
             
-            for solver = fixedSolvers
-                for dt = dt_vals
+                for solver = fixedSolvers
+                    for dt = dt_vals
 
-                    % Set solver
-                    set_param("P1S1sim", ...
-                        "Solver", solver, ...
-                        "FixedStep", num2str(dt), ...
-                        "StopTime", num2str(tEnd));
+                        % Set solver
+                        set_param("P1S1sim", "Solver", solver, "FixedStep", num2str(dt), "StopTime", num2str(tEnd));
+    
+                        % Run simulation + time it
+                        tic;
+                        out = sim("P1S1sim");
+                        cpuTime = toc;
+    
+                        % Extract results
+                        t = out.w.time;
+                        w_sim = out.w.data;
+    
+                        % Analytical solution
+                        w_exact = (w0 - A/b).*exp(-(b/j).*t) + A/b;
+    
+                        % Max error
+                        maxErr = max(abs(w_sim - w_exact));
+    
+                        % Append row to table
+                        newRow = table(solver, dt, j, b, A, freq, cpuTime, maxErr,'VariableNames',{'solver','dt','j','b','A','freq','cpuTime','maxErr'} );
+    
+                        T = [T; newRow];
+                    end
+                end
 
-                    % Run simulation + time it
+                    for solver = variableSolvers
+    
+                    set_param("P1S1sim","Solver", solver, "StopTime", num2str(tEnd));
+    
                     tic;
                     out = sim("P1S1sim");
                     cpuTime = toc;
-
-                    % Extract results
+    
                     t = out.w.time;
                     w_sim = out.w.data;
-
-                    % Analytical solution
+    
                     w_exact = (w0 - A/b).*exp(-(b/j).*t) + A/b;
-
-                    % Max error
                     maxErr = max(abs(w_sim - w_exact));
-
-                    % Append row to table
-                    newRow = table(solver, dt, j, b, A, 0, cpuTime, maxErr,'VariableNames',{'solver','dt','j','b','A','freq','cpuTime','maxErr'} );
-
+    
+                    newRow = table(solver, NaN, j, b, A, freq, cpuTime, maxErr, 'VariableNames',{'solver','dt','j','b','A','freq','cpuTime','maxErr'} );
+    
                     T = [T; newRow];
                 end
-            end
-
-                      for solver = variableSolvers
-
-                set_param("P1S1sim","Solver", solver, "StopTime", num2str(tEnd));
-
-                tic;
-                out = sim("P1S1sim");
-                cpuTime = toc;
-
-                t = out.w.time;
-                w_sim = out.w.data;
-
-                w_exact = (w0 - A/b).*exp(-(b/j).*t) + A/b;
-                maxErr = max(abs(w_sim - w_exact));
-
-                newRow = table(solver, NaN, j, b, A, 0, cpuTime, maxErr, 'VariableNames',{'solver','dt','j','b','A','freq','cpuTime','maxErr'} );
-
-                T = [T; newRow];
             end
         end
     end
@@ -128,6 +127,7 @@ grid on
 xlabel('Max Error')
 ylabel('Time Step')
 title('Max Error Vs CPU time')
+
 
 
 
