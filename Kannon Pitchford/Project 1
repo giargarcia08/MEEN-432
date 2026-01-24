@@ -1,1 +1,53 @@
-% 
+%% Theoretical step response (closed-form) for multiple J and b
+clear; clc; close all;
+
+% Given values
+J_values = [100, 0.01];
+b_values = [10, 0.1];
+
+A  = 100;      % step torque amplitude (Nm)
+w0 = 10;       % initial angular speed (rad/s)
+T  = 25;       % total time (s)
+t  = linspace(0, T, 2000)';   % time vector
+
+figure; hold on; grid on;
+
+for J = J_values
+  for b = b_values
+    % Closed-form (Lecture 3a): omega(t) for step torque A
+    w_th = (A/b) * (1 - exp(-(b/J)*t)) + w0 * exp(-(b/J)*t);
+
+    plot(t, w_th, 'DisplayName', sprintf('J=%g, b=%g (\\lambda=-%g)', J, b, b/J));
+  end
+end
+
+xlabel('Time (s)');
+ylabel('\omega_{theory}(t) (rad/s)');
+title('Theoretical Step Response for All (J,b) Cases');
+legend('Location','best');
+
+
+% Eigen Values
+clear; clc;
+J_values = [100, 0.01];
+b_values = [10, 0.1];
+eig_table = [];
+
+for J = J_values
+    for b = b_values
+        lambda = -b / J;          % eigenvalue for S1
+       
+        
+        eig_table = [eig_table; J, b, lambda];
+    end
+end
+
+ T = array2table(eig_table, ...
+    'VariableNames', {'J','b','eigenvalue_lambda'});
+
+% Print
+fprintf('\nEigenvalues lambda = -b/J:\n');
+for i = 1:height(T)
+    fprintf('J = %-8g b = %-8g  lambda = %-10g 1/s\n', ...
+        T.J(i), T.b(i), T.eigenvalue_lambda(i));
+end
