@@ -77,6 +77,9 @@ for j = j
         end
     end
 end
+%% Compute system eigenvalues for each row
+T.eigen = -T.b ./ T.j;
+
 
 %% Save results
 
@@ -129,10 +132,31 @@ ylabel('Time Step')
 title('Max Error Vs CPU time')
 
 
+%% Contour plots
 
 
+cpu_grid = linspace(min(T.cpuTime), max(T.cpuTime), 100);
+err_grid = linspace(min(T.maxErr), max(T.maxErr), 100);
+[X,Y] = meshgrid(cpu_grid, err_grid);
+
+% Interpolate eigenvalues
+Z_eigen = griddata(T.cpuTime, T.maxErr, T.eigen, X, Y);
+
+% Interpolate input frequency
+Z_freq = griddata(T.cpuTime, T.maxErr, T.freq, X, Y);
 
 
+figure
+contour(X, Y, Z_eigen, 'ShowText','on')
+xlabel('CPU time (s)')
+ylabel('Max Error')
+title('Contour of Constant System Eigenvalues')
+grid on
 
 
-
+figure
+contour(X, Y, Z_freq, 'ShowText','on')
+xlabel('CPU time (s)')
+ylabel('Max Error')
+title('Contour of Constant Input Frequencies')
+grid on
