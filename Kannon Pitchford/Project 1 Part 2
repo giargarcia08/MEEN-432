@@ -1,7 +1,7 @@
 clear; clc; close all;
 
 %% ===== MODEL NAMES (edit these) =====
-opt1 = "P1S12_Option1";   % exports w1, w2 (timeseries)
+opt1 = "P1S2sim";   % exports w1, w2 (timeseries)
 opt2 = "P1S12_Option2";   % exports w  (timeseries)
 opt3 = "P1S12_Option3";   % exports w  (timeseries)
 
