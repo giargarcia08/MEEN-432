@@ -1,171 +1,173 @@
 clear; clc; close all;
 
-%% =======================
-%  Part 2 (Master Script)
-%  Runs Option 1/2/3 models
-%  and compares results
-%% =======================
-
-% ---- Model names (edit if yours differ) ----
-models = struct( ...
-    "opt1", "P1S12_Option1", ...
-    "opt2", "P1S12_Option2", ...
-    "opt3", "P1S12_Option3" ...
-);
-
-% ---- System parameters (per Part 2) ----
-J1 = 100; b1 = 1;
-J2 = 1;   b2 = 1;
-
-A_vals = [1, 100];          % step torques
-k_vals = [10, 100, 1000];   % stiffness (Option 1 only)
-
-% Initial conditions (Part 2 doesn't explicitly specify; pick reasonable defaults)
-w10 = 0; w20 = 0;
-th10 = 0; th20 = 0;
+%% ===== MODEL NAMES (edit these) =====
+opt1 = "P1S12_Option1";   % exports w1, w2 (timeseries)
+opt2 = "P1S12_Option2";   % exports w  (timeseries)
+opt3 = "P1S12_Option3";   % exports w  (timeseries)
 
 tEnd = 25;
 
-% ---- Solver settings (per Part 2) ----
-fixedSolvers = ["ode1", "ode4"];
-dt_vals = [0.1, 1];
-variableSolvers = ["ode45"];  % Part 2 only asks ode45 (not ode23tb)
+%% ===== PART 2 PARAMETERS =====
+J1 = 100; b1 = 1;
+J2 = 1;   b2 = 1;
 
-% ---- Push constants to base workspace (Simulink reads these) ----
+A_vals = [1, 100];
+k_vals = [10, 100, 1000];   % only affects Option 1
+
+w10 = 0; w20 = 0;
+th10 = 0; th20 = 0;
+
+%% ===== SOLVERS (per Part 2) =====
+fixedSolvers = ["ode1","ode4"];
+dt_vals = [0.1, 1];
+varSolvers = ["ode45"];
+
+%% Push constants to base workspace
 assignin("base","J1",J1); assignin("base","b1",b1);
 assignin("base","J2",J2); assignin("base","b2",b2);
 assignin("base","w10",w10); assignin("base","w20",w20);
 assignin("base","th10",th10); assignin("base","th20",th20);
 
-%% Results table (similar style to your Part 1)
-T2 = table();
+%% ===== MASTER RESULTS TABLE =====
+Tmaster = table();
 
-% Helper to append rows
-appendRow = @(opt,modelName,solver,dt,A,k,cpuTime,t,wSig1,wSig2) ...
-    table(string(opt), string(modelName), string(solver), dt, A, k, cpuTime, ...
-          {t}, {wSig1}, {wSig2}, ...
-          'VariableNames', {'option','model','solver','dt','A','k','cpuTime','t','w_main','w_aux'});
-
-%% ========= RUN SWEEPS =========
+%% ===== RUN ALL SIMS (NO PLOTTING HERE) =====
 for A = A_vals
     assignin("base","A",A);
 
     for k = k_vals
         assignin("base","k",k);
 
-        % ---------------------------
-        % Fixed-step solvers (ode1, ode4)
-        % ---------------------------
+        % Fixed-step cases
         for solver = fixedSolvers
             for dt = dt_vals
+                % Option 1
+                set_param(opt1, "Solver", solver, "FixedStep", num2str(dt), "StopTime", num2str(tEnd));
+                Tmaster = run_opt1(Tmaster, opt1, solver, dt, A, k);
 
-                % ===== OPTION 1 =====
-                set_param(models.opt1, "Solver", solver, "FixedStep", num2str(dt), "StopTime", num2str(tEnd));
-                tic; out1 = sim(models.opt1); cpu1 = toc;
+                % Option 2
+                set_param(opt2, "Solver", solver, "FixedStep", num2str(dt), "StopTime", num2str(tEnd));
+                Tmaster = run_opt23(Tmaster, opt2, "Option2", solver, dt, A, k);
 
-                [t1, w1a, w1b] = extract_option1(out1); % w1,w2
-                T2 = [T2; appendRow("Option1",models.opt1,solver,dt,A,k,cpu1,t1,w1a,w1b)];
-
-                % ===== OPTION 2 =====
-                set_param(models.opt2, "Solver", solver, "FixedStep", num2str(dt), "StopTime", num2str(tEnd));
-                tic; out2 = sim(models.opt2); cpu2 = toc;
-
-                [t2, w2main] = extract_singlew(out2); % w
-                T2 = [T2; appendRow("Option2",models.opt2,solver,dt,A,NaN,cpu2,t2,w2main,NaN)];
-
-                % ===== OPTION 3 =====
-                set_param(models.opt3, "Solver", solver, "FixedStep", num2str(dt), "StopTime", num2str(tEnd));
-                tic; out3 = sim(models.opt3); cpu3 = toc;
-
-                [t3, w3main] = extract_singlew(out3); % w
-                T2 = [T2; appendRow("Option3",models.opt3,solver,dt,A,NaN,cpu3,t3,w3main,NaN)];
-
-                % ---- Comparison plot (this A,k,solver,dt) ----
-                make_compare_plot(A,k,solver,dt, ...
-                    t1,w1a,w1b, ...
-                    t2,w2main, ...
-                    t3,w3main);
+                % Option 3
+                set_param(opt3, "Solver", solver, "FixedStep", num2str(dt), "StopTime", num2str(tEnd));
+                Tmaster = run_opt23(Tmaster, opt3, "Option3", solver, dt, A, k);
             end
         end
 
-        % ---------------------------
-        % Variable-step solver (ode45)
-        % ---------------------------
-        for solver = variableSolvers
+        % Variable-step (ode45)
+        for solver = varSolvers
+            set_param(opt1, "Solver", solver, "StopTime", num2str(tEnd));
+            Tmaster = run_opt1(Tmaster, opt1, solver, NaN, A, k);
 
-            % ===== OPTION 1 =====
-            set_param(models.opt1, "Solver", solver, "StopTime", num2str(tEnd));
-            tic; out1 = sim(models.opt1); cpu1 = toc;
+            set_param(opt2, "Solver", solver, "StopTime", num2str(tEnd));
+            Tmaster = run_opt23(Tmaster, opt2, "Option2", solver, NaN, A, k);
 
-            [t1, w1a, w1b] = extract_option1(out1);
-            T2 = [T2; appendRow("Option1",models.opt1,solver,NaN,A,k,cpu1,t1,w1a,w1b)];
-
-            % ===== OPTION 2 =====
-            set_param(models.opt2, "Solver", solver, "StopTime", num2str(tEnd));
-            tic; out2 = sim(models.opt2); cpu2 = toc;
-
-            [t2, w2main] = extract_singlew(out2);
-            T2 = [T2; appendRow("Option2",models.opt2,solver,NaN,A,NaN,cpu2,t2,w2main,NaN)];
-
-            % ===== OPTION 3 =====
-            set_param(models.opt3, "Solver", solver, "StopTime", num2str(tEnd));
-            tic; out3 = sim(models.opt3); cpu3 = toc;
-
-            [t3, w3main] = extract_singlew(out3);
-            T2 = [T2; appendRow("Option3",models.opt3,solver,NaN,A,NaN,cpu3,t3,w3main,NaN)];
-
-            % ---- Comparison plot (this A,k,ode45) ----
-            make_compare_plot(A,k,solver,NaN, ...
-                t1,w1a,w1b, ...
-                t2,w2main, ...
-                t3,w3main);
+            set_param(opt3, "Solver", solver, "StopTime", num2str(tEnd));
+            Tmaster = run_opt23(Tmaster, opt3, "Option3", solver, NaN, A, k);
         end
     end
 end
 
-%% ========= CPU TIME SUMMARY TABLE =========
-CPU_Table = T2(:, {'option','solver','dt','A','k','cpuTime'});
+%% ===== CPU TABLE (successful only) =====
+CPU_Table = Tmaster(Tmaster.success==true, {'option','solver','dt','A','k','cpuTime'});
 disp(CPU_Table);
 
-save("P2_master_results.mat","T2","CPU_Table");
+save("P2_master_results.mat","Tmaster","CPU_Table");
 writetable(CPU_Table, "P2_CPUtimes_master.csv");
 
-%% ========= Helper functions (local) =========
-function [t, w1, w2] = extract_option1(out)
-% expects timeseries out.w1 and out.w2
-t  = out.w1.time;
-w1 = out.w1.data;
-w2 = out.w2.data;
+%% =========================================================
+%                 MINIMAL PLOTTING SECTION
+%   Option 1: 6 figs (A,k). Option 2: 2 figs (A). Option 3: 2 figs (A)
+%% =========================================================
+
+% Helper label function
+mkLabel = @(solver,dt) (isnan(dt)) * string(solver) + (~isnan(dt)) * (string(solver) + " dt=" + string(dt));
+
+% -------- Option 1 plots (6 figures) --------
+for A = A_vals
+    for k = k_vals
+        rows = Tmaster(Tmaster.option=="Option1" & Tmaster.A==A & Tmaster.k==k & Tmaster.success==true, :);
+
+        figure; hold on; grid on;
+        title(sprintf("Option 1 (spring) | A=%g Nm, k=%g", A, k));
+        xlabel("Time (s)"); ylabel("\omega (rad/s)");
+
+        for i = 1:height(rows)
+            t  = rows.t{i};
+            w1 = rows.w_main{i};
+            w2 = rows.w_aux{i};
+
+            lbl = mkLabel(rows.solver(i), rows.dt(i));
+            plot(t, w1, "DisplayName", "w1 " + lbl);
+            plot(t, w2, "--", "DisplayName", "w2 " + lbl);
+        end
+
+        legend("Location","bestoutside");
+    end
 end
 
-function [t, w] = extract_singlew(out)
-% expects timeseries out.w
-t = out.w.time;
-w = out.w.data;
+% -------- Option 2 plots (2 figures: one per A) --------
+for A = A_vals
+    rows = Tmaster(Tmaster.option=="Option2" & Tmaster.A==A & Tmaster.success==true, :);
+
+    figure; hold on; grid on;
+    title(sprintf("Option 2 (combined inertia) | A=%g Nm", A));
+    xlabel("Time (s)"); ylabel("\omega (rad/s)");
+
+    for i = 1:height(rows)
+        t = rows.t{i};
+        w = rows.w_main{i};
+
+        lbl = mkLabel(rows.solver(i), rows.dt(i));
+        plot(t, w, "DisplayName", lbl);
+    end
+
+    legend("Location","bestoutside");
 end
 
-function make_compare_plot(A,k,solver,dt, t1,w1,w2, t2,wOpt2, t3,wOpt3)
-figure;
-plot(t1,w1); hold on;
-plot(t1,w2,'--');
-plot(t2,wOpt2);
-plot(t3,wOpt3);
+% -------- Option 3 plots (2 figures: one per A) --------
+for A = A_vals
+    rows = Tmaster(Tmaster.option=="Option3" & Tmaster.A==A & Tmaster.success==true, :);
 
-grid on;
-xlabel('Time (s)');
-ylabel('\omega (rad/s)');
+    figure; hold on; grid on;
+    title(sprintf("Option 3 (shared integration) | A=%g Nm", A));
+    xlabel("Time (s)"); ylabel("\omega (rad/s)");
 
-if isnan(dt)
-    title(sprintf('Part 2 Compare | A=%g Nm, k=%g | %s', A, k, solver));
-else
-    title(sprintf('Part 2 Compare | A=%g Nm, k=%g | %s dt=%g', A, k, solver, dt));
+    for i = 1:height(rows)
+        t = rows.t{i};
+        w = rows.w_main{i};
+
+        lbl = mkLabel(rows.solver(i), rows.dt(i));
+        plot(t, w, "DisplayName", lbl);
+    end
+
+    legend("Location","bestoutside");
 end
 
-legend( ...
-    'Opt1: \omega_1 (end 1)', ...
-    'Opt1: \omega_2 (end 2)', ...
-    'Opt2: \omega_{eq}', ...
-    'Opt3: \omega_{shared}', ...
-    'Location','best' ...
-);
+%% ===== Local functions =====
+function T = run_opt1(T, model, solver, dt, A, k)
+try
+    tic; out = sim(model); cpu = toc;
+    t  = out.w1.time; w1 = out.w1.data; w2 = out.w2.data;
+
+    T = [T; table("Option1", string(model), string(solver), dt, A, k, cpu, true, "", {t},{w1},{w2}, ...
+        'VariableNames', {'option','model','solver','dt','A','k','cpuTime','success','errMsg','t','w_main','w_aux'})];
+catch ME
+    T = [T; table("Option1", string(model), string(solver), dt, A, k, NaN, false, string(ME.message), {[]},{[]},{[]}, ...
+        'VariableNames', {'option','model','solver','dt','A','k','cpuTime','success','errMsg','t','w_main','w_aux'})];
+end
+end
+
+function T = run_opt23(T, model, optName, solver, dt, A, k)
+try
+    tic; out = sim(model); cpu = toc;
+    t  = out.w.time; w = out.w.data;
+
+    T = [T; table(string(optName), string(model), string(solver), dt, A, k, cpu, true, "", {t},{w},{[]}, ...
+        'VariableNames', {'option','model','solver','dt','A','k','cpuTime','success','errMsg','t','w_main','w_aux'})];
+catch ME
+    T = [T; table(string(optName), string(model), string(solver), dt, A, k, NaN, false, string(ME.message), {[]},{[]},{[]}, ...
+        'VariableNames', {'option','model','solver','dt','A','k','cpuTime','success','errMsg','t','w_main','w_aux'})];
+end
 end
