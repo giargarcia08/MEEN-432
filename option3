@@ -1,1 +1,150 @@
+clear; clc;
+
+%  System parameters
+
+j = [100, 0.01];
+b = [10, 0.1];
+k=10;
+
+w0 = 10;                 % rad/s
+w = [0.1,100];
+A= [0, 100];       % constant torque only (Part 1 error calc)
+
+tEnd = 25;
+%%  Solver settings
+
+fixedSolvers = ["ode1", "ode4"];
+variableSolvers = ["ode45"]; %"ode23tb"
+dt_vals = [0.1, 1];
+
+%% 
+
+%  Create table
+T = table();
+
+for j = j
+    for b = b
+        for A = A
+            for freq = w
+
+            
+                for solver = fixedSolvers
+                    for dt = dt_vals
+
+                        % Set solver
+                        set_param("P1Opt3", "Solver", solver, "FixedStep", num2str(dt), "StopTime", num2str(tEnd));
+    
+                        % Run simulation + time it
+                        tic;
+                        out = sim("P1Opt3");
+                        cpuTime = toc;
+    
+                        % Extract results
+                        t = out.w3.time;
+                        w_sim = out.w3.data;
+                        
+                       % t = out.w2.time;
+                        %w2_sim = out.w2.data;
+    
+                        % Analytical solution
+                        w_exact = (w0 - A/b).*exp(-(b/j).*t) + A/b;
+    
+                        % Max error
+                        maxErr = max(abs(w_sim - w_exact));
+    
+                        % Append row to table
+                        newRow = table(solver, dt, j, b, A, freq, cpuTime, maxErr,'VariableNames',{'solver','dt','j','b','A','freq','cpuTime','maxErr'} );
+    
+                        T = [T; newRow];
+                    end
+                end
+
+                 for solver = variableSolvers
+    
+                    set_param("P1Opt3","Solver", solver, "StopTime", num2str(tEnd));
+    
+                    tic;
+                    out = sim("P1Opt3");
+                    cpuTime = toc;
+    
+                    t = out.w3.time;
+                    w_sim = out.w3.data;
+                    %t = out.w2.time;
+                    %w2_sim = out.w2.data;
+    
+                    w_exact = (w0 - A/b).*exp(-(b/j).*t) + A/b;
+                    maxErr = max(abs(w_sim - w_exact));
+    
+                    newRow = table(solver, NaN, j, b, A, freq, cpuTime, maxErr, 'VariableNames',{'solver','dt','j','b','A','freq','cpuTime','maxErr'} );
+    
+                    T = [T; newRow];
+                end
+            end
+        end
+    end
+end
+%% Compute system eigenvalues for each row
+T.eigen = -T.b ./ T.j;
+
+
+%% Save results
+
+save("P1_results.mat","T");
+
+
+
+%% Create plots
+%{
+% CPU time Vs Max Error
+figure
+plot(T.cpuTime,T.maxErr);
+grid on
+xlabel('CPU time')
+ylabel('Max error')
+title('CPU Time vs Max Error')
+
+hold on 
+
+
+%Max error Vs Time Step
+figure
+plot(T.maxErr, T.dt);
+grid on
+xlabel('Max Error')
+ylabel('Time Step')
+title('CMax Error Vs CPU time')
+
+hold on 
+
+
+%CPU time vs Time Step
+figure
+plot(T.cpuTime, T.dt);
+grid on
+xlabel('CPU time')
+ylabel('Time Step')
+title('CPU TIme Vs Time Step')
+
+
+hold on 
+
+
+%Max Error Vs CPU time 
+figure
+plot(T.maxErr, T.dt);
+grid on
+xlabel('Max Error')
+ylabel('Time Step')
+title('Max Error Vs CPU time')
+%}
+%% Shaft Speed vs Time Option 3
+
+figure
+plot(t,w_sim(:,1),'LineWidth',3)
+hold on;
+plot(t,w_sim(:,2),'r','LineWidth', 1.5)
+grid on
+xlabel("Time")
+ylabel("Shaft Speed")
+title('Shaft Speed over Time')
 
