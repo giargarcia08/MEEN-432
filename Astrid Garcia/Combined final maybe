@@ -1,0 +1,227 @@
+% Project 1 - Part 2 (Options 1,2,3)
+% - j1=100,b1=1; j2=1,b2=1; step inputs A = [1,100]
+% - Option 1: k = [10,100,1000]
+% - Simulate: ode1, ode4 with dt = [0.1, 1] and ode45
+% - Plot shaft speed vs time (Opt1: speeds at either end w1,w2)
+% - Compare options together; add legends
+% - Tabulate CPU time
+
+
+clear; clc; close all;
+
+%%  Part 2 parameters 
+tEnd = 25;
+
+J1 = 100; b1 = 1;
+J2 = 1;   b2 = 1;
+
+A_steps = [1, 100];        % step torque inputs
+k_vals  = [10, 100, 1000]; % only for option 1 
+
+fixedSolvers = ["ode1","ode4"]; 
+dt_vals      = [0.1, 1];
+varSolvers   = ["ode45"];
+
+% Push defaults into base workspace so Simulink can see them
+assignin("base","tEnd",tEnd);
+assignin("base","J1",J1); assignin("base","b1",b1);
+assignin("base","J2",J2); assignin("base","b2",b2);
+assignin("base","A",A_steps(1));
+assignin("base","k",k_vals(1));
+
+%% Build models 
+m1 = "P1S2_opt1_flexibleShaft";
+m2 = "P1S2_opt2_combined";
+m3 = "P1S2_opt3_S2integrates";
+
+if ~isfile(m1 + ".slx"), build_opt1(m1); end
+if ~isfile(m2 + ".slx"), build_opt2(m2); end
+if ~isfile(m3 + ".slx"), build_opt3(m3); end
+
+%% ====== Simulation sweep ======
+T = table();
+
+caseID = 0;
+
+for A = A_steps
+    assignin("base","A",A);
+
+    % ---- Option 2 has no k loop ----
+    % We will still store it alongside each k for easy comparison plotting.
+    for k = k_vals
+        assignin("base","k",k);
+
+        % Fixed-step solvers
+        for solver = fixedSolvers
+            for dt = dt_vals
+                caseID = caseID + 1;
+
+                % Option 1
+                [cpu1, out1] = run_one(m1, solver, dt, tEnd);
+                % Option 2
+                [cpu2, out2] = run_one(m2, solver, dt, tEnd);
+                % Option 3
+                [cpu3, out3] = run_one(m3, solver, dt, tEnd);
+
+                T = [T; make_row(caseID, A, k, solver, dt, "fixed", cpu1, cpu2, cpu3, out1, out2, out3)];
+            end
+        end
+
+        % ode45
+        for solver = varSolvers
+            caseID = caseID + 1;
+
+            [cpu1, out1] = run_one(m1, solver, "auto", tEnd);
+            [cpu2, out2] = run_one(m2, solver, "auto", tEnd);
+            [cpu3, out3] = run_one(m3, solver, "auto", tEnd);
+
+            T = [T; make_row(caseID, A, k, solver, NaN, "variable", cpu1, cpu2, cpu3, out1, out2, out3)];
+        end
+    end
+end
+
+%% Show CPU time table 
+disp("==== CPU time table (seconds) ====");
+disp(T(:,["caseID","A","k","solver","dt","stepType","cpu_opt1","cpu_opt2","cpu_opt3"]));
+
+%% ====== Plots (ONLY ode4 dt=0.1 and ode45) ======
+
+plotFixedSolver = "ode4";
+plotFixedDt     = 0.1;
+plotVarSolver   = "ode45";
+
+for A = A_steps
+
+    % ------------------ FIXED: ode4, dt=0.1 ------------------
+    rows_fixed = T(T.A==A & string(T.solver)==plotFixedSolver & T.dt==plotFixedDt, :);
+    titleSuffixFixed = plotFixedSolver + ", dt=" + plotFixedDt;
+
+    for k = k_vals
+        r = rows_fixed(rows_fixed.k==k,:);
+        if isempty(r), continue; end
+
+        opt1_w1 = r.opt1_w1{1};  opt1_w2 = r.opt1_w2{1};
+        opt2_w  = r.opt2_w {1};
+        opt3_w1 = r.opt3_w1{1};  opt3_w2 = r.opt3_w2{1};
+
+        figure('Name', sprintf('A=%g, k=%g, %s', A, k, titleSuffixFixed));
+        hold on; grid on;
+
+        plot(opt1_w1.t, opt1_w1.data, 'LineWidth', 1.2);
+        plot(opt1_w2.t, opt1_w2.data, 'LineWidth', 1.2);
+        plot(opt2_w.t,  opt2_w.data,  'LineWidth', 1.2);
+        plot(opt3_w1.t, opt3_w1.data, 'LineWidth', 1.2);
+        plot(opt3_w2.t, opt3_w2.data, 'LineWidth', 1.2);
+
+        xlabel('Time (s)');
+        ylabel('Shaft speed \omega (rad/s)');
+        title(sprintf('Compare Options | A=%g Nm, k=%g | %s', A, k, titleSuffixFixed));
+        legend("Opt1: \omega_1 (J1 end)", ...
+               "Opt1: \omega_2 (J2 end)", ...
+               "Opt2: \omega (combined)", ...
+               "Opt3: \omega_1 (S2 integrates)", ...
+               "Opt3: \omega_2 (S2 integrates)", ...
+               'Location','best');
+    end
+
+    % ------------------ VARIABLE: ode45 ------------------
+    rows_var = T(T.A==A & string(T.solver)==plotVarSolver & isnan(T.dt), :);
+    titleSuffixVar = plotVarSolver + " (variable-step)";
+
+    for k = k_vals
+        r = rows_var(rows_var.k==k,:);
+        if isempty(r), continue; end
+
+        opt1_w1 = r.opt1_w1{1};  opt1_w2 = r.opt1_w2{1};
+        opt2_w  = r.opt2_w {1};
+        opt3_w1 = r.opt3_w1{1};  opt3_w2 = r.opt3_w2{1};
+
+        figure('Name', sprintf('A=%g, k=%g, %s', A, k, titleSuffixVar));
+        hold on; grid on;
+
+        plot(opt1_w1.t, opt1_w1.data, 'LineWidth', 1.2);
+        plot(opt1_w2.t, opt1_w2.data, 'LineWidth', 1.2);
+        plot(opt2_w.t,  opt2_w.data,  'LineWidth', 1.2);
+        plot(opt3_w1.t, opt3_w1.data, 'LineWidth', 1.2);
+        plot(opt3_w2.t, opt3_w2.data, 'LineWidth', 1.2);
+
+        xlabel('Time (s)');
+        ylabel('Shaft speed \omega (rad/s)');
+        title(sprintf('Compare Options | A=%g Nm, k=%g | %s', A, k, titleSuffixVar));
+        legend("Opt1: \omega_1 (J1 end)", ...
+               "Opt1: \omega_2 (J2 end)", ...
+               "Opt2: \omega (combined)", ...
+               "Opt3: \omega_1 (S2 integrates)", ...
+               "Opt3: \omega_2 (S2 integrates)", ...
+               'Location','best');
+    end
+end
+
+
+%% 
+
+function [cpuTime, out] = run_one(model, solver, dt, tEnd)
+    load_system(model);
+
+    set_param(model, 'StopTime', num2str(tEnd));
+    set_param(model, 'Solver', char(solver));
+
+    if isstring(dt) || ischar(dt)
+        % variable-step case
+        set_param(model, 'FixedStep', 'auto');
+        set_param(model, 'SolverType', 'Variable-step');
+    else
+        % fixed-step case
+        set_param(model, 'FixedStep', num2str(dt));
+        set_param(model, 'SolverType', 'Fixed-step');
+    end
+
+    % ensure model updates
+    set_param(model, 'SimulationCommand', 'update');
+
+    t0 = tic;
+    simOut = sim(model, 'ReturnWorkspaceOutputs', 'on');
+    cpuTime = toc(t0);
+
+    % Each model uses To Workspace blocks that save timeseries
+    out = struct();
+    out.w1 = simOut.get('w1');   % may be empty depending on option
+    out.w2 = simOut.get('w2');
+    out.w  = simOut.get('w');    % option 2
+end
+
+function row = make_row(caseID, A, k, solver, dt, stepType, cpu1, cpu2, cpu3, out1, out2, out3)
+    % Convert timeseries 
+    row = table();
+    row.caseID  = caseID;
+    row.A       = A;
+    row.k       = k;
+    row.solver  = string(solver);
+    row.dt      = dt;
+    row.stepType= string(stepType);
+
+    row.cpu_opt1 = cpu1;
+    row.cpu_opt2 = cpu2;
+    row.cpu_opt3 = cpu3;
+
+    % Option 1 (w1,w2)
+    row.opt1_w1 = {ts2struct(out1.w1)};
+    row.opt1_w2 = {ts2struct(out1.w2)};
+
+    % Option 2 (w)
+    row.opt2_w  = {ts2struct(out2.w)};
+
+    % Option 3 (w1,w2)
+    row.opt3_w1 = {ts2struct(out3.w1)};
+    row.opt3_w2 = {ts2struct(out3.w2)};
+end
+
+function s = ts2struct(ts)
+    if isempty(ts)
+        s = struct('t', [], 'data', []);
+        return;
+    end
+    % To Workspace outputs a timeseries by default
+    s = struct('t', ts.Time, 'data', ts.Data);
+end
+
