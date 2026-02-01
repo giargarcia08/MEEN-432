@@ -1,8 +1,8 @@
 clear; clc;
 
-model = "P1Opt3";   % change if needed
+model_3 = "P1Opt3";   % change if needed
 model_2 = "P1S2sim2";
-model_3 = "P1S2sim_2_";
+model = "P1S2sim_2_";
 tEnd  = 25;
 
 % Parameters
@@ -28,6 +28,8 @@ assignin("base","th10",th10); assignin("base","th20",th20);
 % Results table
 T2 = table();
 
+
+ 
 for A = A_vals
     assignin("base","A",A);
 
@@ -48,33 +50,33 @@ for A = A_vals
                 set_param(model_3, "Solver", solver, "FixedStep", num2str(dt), "StopTime", num2str(tEnd));
 
                 try
-                    tic; out = sim(model); cpuTime = toc;               
-                    t  = out.w3.time;
+                    tic; out = sim(model_3); cpuTime = toc;               
+                    t3  = out.w3.time;
                     w3 = out.w3.data;
 
                     tic; out = sim(model_2); cpuTime = toc;
-                    t2 = out.w.time;
-                    w = out.w.data;
+                    t2 = out.w2.time;
+                    w2 = out.w2.data;
 
-                    tic; out = sim(model_3); cpuTime = toc;
+                    tic; out = sim(model); cpuTime = toc;
                     t1 = out.w1a.time;
                     w1a = out.w1a.data;
 
                     % store
                     T2 = [T2; table(string(solver), dt, A, k, cpuTime, true, "", ...
-                        {t},{w3},{t2},{w},{t1},{w1a},'VariableNames', ...
-                        {'solver','dt','A','k','cpuTime','success','errMsg','t','w3','t2','w','t1','w1a'})];
+                        {t3},{w3},{t2},{w2},{t1},{w1a},'VariableNames', ...
+                        {'solver','dt','A','k','cpuTime','success','errMsg','t3','w3','t2','w2','t1','w1a'})];
 
                     % plot (label)
                     lbl = sprintf("%s dt=%g", solver, dt);
-                    plot(t, w3, "DisplayName", "w3 " + lbl);
-                    plot(t2, w, "--", "DisplayName", "w " + lbl);
+                    plot(t3, w3, "DisplayName", "w3 " + lbl);
+                    plot(t2, w2, "--", "DisplayName", "w2 " + lbl);
                     plot(t1, w1a, "-o", "DisplayName", "w1a " + lbl);
 
                 catch ME
                     T2 = [T2; table(string(solver), dt, A, k, NaN, false, string(ME.message), ...
                         {[]},{[]},{[]},{[]},{[]},{[]}, 'VariableNames', ...
-                        {'solver','dt','A','k','cpuTime','success','errMsg','t','w3','t2','w','t1','w1a'})];
+                        {'solver','dt','A','k','cpuTime','success','errMsg','t3','w3','t2','w2','t1','w1a'})];
                 end
             end
         end
@@ -92,24 +94,24 @@ for A = A_vals
             set_param(model_3, "Solver", solver, "FixedStep", num2str(dt), "StopTime", num2str(tEnd));
 
             try
-                tic; out = sim(model); cpuTime = toc;
-                t  = out.w3.time;
+                tic; out = sim(model_3); cpuTime = toc;
+                t3  = out.w3.time;
                 w3 = out.w3.data;
 
                 tic; out = sim(model_2); cpuTime = toc;
-                t2 = out.w.time;
-                w = out.w.data;
+                t2 = out.w2.time;
+                w2 = out.w2.data;
 
-                tic; out = sim(model_3); cpuTime = toc;
+                tic; out = sim(model); cpuTime = toc;
                 t1 = out.w1a.time;
                 w1a = out.w1a.data;
 
                 T2 = [T2; table(string(solver), NaN, A, k, cpuTime, true, "", ...
-                    {t},{w3},{t2},{w},{t1},{w1a}, 'VariableNames', ...
-                    {'solver','dt','A','k','cpuTime','success','errMsg','t','w3','t2','w','t1','w1a'})];
+                    {t3},{w3},{t2},{w2},{t1},{w1a}, 'VariableNames', ...
+                    {'solver','dt','A','k','cpuTime','success','errMsg','t3','w3','t2','w2','t1','w1a'})];
 
-                plot(t, w3, "DisplayName", "w3 " + string(solver));
-                plot(t2, w, "--", "DisplayName", "w " + string(solver));
+                plot(t3, w3, "DisplayName", "w3 " + string(solver));
+                plot(t2, w2, "--", "DisplayName", "w2 " + string(solver));
                 plot(t1, w1a, "-o", "DisplayName", "w1a " + lbl);
 
             catch ME
@@ -128,3 +130,4 @@ disp(CPU_Table);
 
 save("P2_option3_results.mat","T2","CPU_Table");
 writetable(CPU_Table,"P2_option3_CPUtimes.csv");
+            
