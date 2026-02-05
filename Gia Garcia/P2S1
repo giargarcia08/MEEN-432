@@ -16,6 +16,6 @@ roadCenters = [0 0 0;
 roadWidth = 15;
 headings = [0;0;180;-180;NaN];
 road(scenario, roadCenters, roadWidth, 'Heading', headings, 'Name', 'Road');
-car = vehicle(scenario, 'ClassID', 1 'Length', 15, 'Width', 5, 'Height', 1.6, 'Position'[0 0 0], 'Yaw', 30);
+car = vehicle(scenario, 'ClassID', 1, 'Length', 15, 'Width', 5, 'Height', 1.6, 'Position', [0 0 0], 'Yaw', 30);
 road (scenario, roadCenters, 'Heading', headings, 'Name', 'Road');
 plot(scenario, 'Centerline', 'on', 'RoadCenters', 'on');
